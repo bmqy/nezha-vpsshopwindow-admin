@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         哪吒VPS橱窗后台脚本
 // @namespace    http://bmqy.net/
-// @version      1.0.0
+// @version      1.0.1
 // @description  配合哪吒面板自定义代码VPS橱窗打造的后台油猴脚本
 // @author       bmqy
 // @match        http://*/*
@@ -10,6 +10,8 @@
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        GM_xmlhttpRequest
+// @downloadURL https://update.greasyfork.org/scripts/495551/%E5%93%AA%E5%90%92VPS%E6%A9%B1%E7%AA%97%E5%90%8E%E5%8F%B0%E8%84%9A%E6%9C%AC.user.js
+// @updateURL https://update.greasyfork.org/scripts/495551/%E5%93%AA%E5%90%92VPS%E6%A9%B1%E7%AA%97%E5%90%8E%E5%8F%B0%E8%84%9A%E6%9C%AC.meta.js
 // ==/UserScript==
 
 (function() {
@@ -22,7 +24,34 @@
         cycle: "付款周期",
         start: "购买日期",
         expire: "过期时间",
+        autoPay: '自动续费',
     }
+    const cycleOptions = [
+        '年付',
+        '半年付',
+        '季付',
+        '月付',
+        '年',
+        '半',
+        '季',
+        '月',
+        'Year',
+        'Half',
+        'Quarterly',
+        'Month',
+        'Y',
+        'H',
+        'Q',
+        'M',
+        'year',
+        'half',
+        'quarterly',
+        'month',
+    ];
+    const autoPayOptions = [
+        '否',
+        '是'
+    ];
     let timmer = null;
     let changer = false;
     const pathname = location.pathname;
@@ -67,11 +96,28 @@
                     let extraData = extra[id];
                     let $inputLabel = document.createElement('div');
                     $inputLabel.setAttribute('style', 'white-space: nowrap;padding-bottom:3px;');
-                    $inputLabel.innerHTML = '<span style="display:inline-block;width:70px;">'+ extraDataKeyName[key] +'：</span>';
+                    let requiredTag = '';
+                    if(['price', 'cycle', 'start'].indexOf(key) > -1){
+                        requiredTag = '*';
+                    }
+                    $inputLabel.innerHTML = '<span style="display:inline-block;width:70px;">'+ requiredTag + extraDataKeyName[key] +'：</span>';
                     let $input = document.createElement('input');
+                    if(['cycle', 'autoPay'].indexOf(key) > -1){
+                        $input = document.createElement('select');
+                        if(key === 'cycle'){
+                            for(let key in cycleOptions){
+                                $input.options.add(new Option(cycleOptions[key], cycleOptions[key]));
+                            }
+                        }
+                        if(key === 'autoPay'){
+                            for(let key in autoPayOptions){
+                                $input.options.add(new Option(autoPayOptions[key], autoPayOptions[key]));
+                            }
+                        }
+                    }
                     $input.name = key;
                     if(extraData){
-                        $input.value = extraData[key];
+                        $input.value = extraData[key] ? extraData[key] : '';
                     }
                     $input.addEventListener('change', ()=>{
                         changer = true;
@@ -113,10 +159,11 @@
             let shop = e.querySelector('input[name=shop]').value,
                 pid = e.querySelector('input[name=pid]').value,
                 price =e.querySelector('input[name=price]').value,
-                cycle = e.querySelector('input[name=cycle]').value,
+                cycle = e.querySelector('select[name=cycle]').value,
                 start = e.querySelector('input[name=start]').value,
-                expire = e.querySelector('input[name=expire]').value;
-            if(shop || pid || price || cycle || start || expire){
+                expire = e.querySelector('input[name=expire]').value,
+                autoPay = e.querySelector('select[name=autoPay]').value;
+            if(price && cycle && start){
                 extraNew[e.id] = {
                     shop:shop,
                     pid: pid,
@@ -124,9 +171,11 @@
                     cycle: cycle,
                     start: start,
                     expire: expire,
+                    autoPay: autoPay,
                 }
             }
         });
+        GM_setValue(storageKey +'.extra', extraNew);
         let customCodeNew = customCodeOld.replace(/(?<=extraData = )[\s\S]+(?=\nconst cycleNames)/g, JSON.stringify(extraNew));
         paramsRaw.set('CustomCode', customCodeNew)
         GM_xmlhttpRequest({
@@ -135,7 +184,7 @@
             headers: {
                 "Content-Type":"application/x-www-form-urlencoded; charset=UTF-8"
             },
-            responseType : 'json',
+            responseType: 'json',
             data: paramsRaw.toString(),
             onload: function(responses){
                 let res = responses.response;
