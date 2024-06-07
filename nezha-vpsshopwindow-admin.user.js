@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         哪吒VPS橱窗后台脚本
 // @namespace    http://bmqy.net/
-// @version      1.0.1
+// @version      1.0.2
 // @description  配合哪吒面板自定义代码VPS橱窗打造的后台油猴脚本
 // @author       bmqy
 // @match        http://*/*
@@ -66,6 +66,10 @@
         GM_setValue(storageKey +'.raw', settingData);
         const CustomCode = document.querySelector('textarea[name=CustomCode]').value;
         let CustomCodeValue =CustomCode.match(/(?<=extraData = )[\s\S]+(?=\nconst cycleNames)/g);
+        if(!CustomCodeValue){
+            alert('请检查是否已经添加《哪吒面板VPS橱窗脚本》，脚本可去：https://www.bmqy.net/2665.html，获取');
+            return false;
+        }
         CustomCodeValue = CustomCodeValue ? CustomCodeValue[0] : '{}';
         CustomCodeValue = CustomCodeValue.replace(/([0-9a-zA-Z]+):/g, '"$1":').replace(/},\n}/g, '}\n}').replace(/'/g, '"');
         extra = JSON.parse(CustomCodeValue);
